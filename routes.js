@@ -152,7 +152,7 @@ module.exports = function ({ db, router }) {
 
     .post('/disable', [
         check('username').isString(),
-      ],async function (req, res, next) {
+      ], async function (req, res, next) {
       const { username } = req.body
       await authCollection.updateOne({ username }, { $set: { isEnabled: false } })
       res.sendStatus(200)
@@ -160,10 +160,16 @@ module.exports = function ({ db, router }) {
 
     .post('/enable', [
         check('username').isString(),
-      ],async function (req, res, next) {
+      ], async function (req, res, next) {
       const { username } = req.body
       await authCollection.updateOne({ username }, { $set: { isEnabled: true } })
       res.sendStatus(200)
+    })
+
+    .get('/count', async function (req, res, next) {
+      const { username } = req.body
+      const count = await authCollection.estimatedDocumentCount()
+      res.json({ count })
     })
 
 }

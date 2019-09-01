@@ -10,6 +10,8 @@ const TOKEN_LOGIN_URL = `${BASE_URL}/token`
 const CHANGE_PASSWORD_URL = `${BASE_URL}/password`
 const DISABLE_USER_URL = `${BASE_URL}/disable`
 const ENABLE_USER_URL = `${BASE_URL}/enable`
+const COUNT_URL = `${BASE_URL}/count`
+
 
 describe('auth api', async function() {
 
@@ -58,12 +60,12 @@ describe('auth api', async function() {
     expect(data.token).to.be.a('string')
   })
 
-  it('disable user', async function() {
+  it('Disable user', async function() {
     const { data } = await axios.post(DISABLE_USER_URL, { username })
     expect(data).to.equal('OK')
   })
 
-  it('user can\'t login after disable', function(done) {
+  it('User can\'t login after disable', function(done) {
     const resp = axios.post(LOGIN_URL, { username, password: 'test' })
       .catch(err => {
         expect(err.response.status).to.equal(400)
@@ -71,15 +73,20 @@ describe('auth api', async function() {
       })
   })
 
-  it('enable user', async function() {
+  it('Enable user', async function() {
     const { data } = await axios.post(ENABLE_USER_URL, { username })
     expect(data).to.equal('OK')
   })
 
-  it('user can login after enable', async function() {
+  it('User can login after enable', async function() {
     const { data } = await axios.post(LOGIN_URL, { username, password: 'test' })
     expect(data.username).to.be.a('string')
     expect(data.token).to.be.a('string')
+  })
+
+  it('Count users', async function() {
+    const { data } = await axios.get(COUNT_URL)
+    expect(data.count).to.equal(1)
   })
 
 })
