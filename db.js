@@ -1,8 +1,8 @@
 const { MongoClient } = require('mongodb')
 
-module.exports = async function ({ ENV_MONGO_URL }) {
+module.exports = async function ({ MONGO_URL }) {
 
-  const mongo = await MongoClient.connect(ENV_MONGO_URL, {
+  const mongo = await MongoClient.connect(MONGO_URL, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })

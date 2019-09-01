@@ -2,6 +2,8 @@ const _ = require('lodash')
 const moment = require('moment')
 const bcrypt = require('bcryptjs')
 const nanoid = require('nanoid')
+const { check } = require('express-validator')
+
 
 const hashSync = context => bcrypt.hashSync(context, bcrypt.genSaltSync(10))
 
@@ -12,67 +14,66 @@ module.exports = function ({ db, router }) {
   return router
 
     .get('/status', async function (req, res, next) {
-      return res.sendStatus(200)
+      return res.json({
+        api: true,
+        db: db.serverConfig.isConnected(),
+      })
     })
 
-    .post('/register', async function (req, res, next) {
+    .post('/register', [
+        check('username').isString(),
+        check('password').isString(),
+      ], async function (req, res, next) {
       const { username, password } = req.body
-      const isUsernameExist = await authCollection.findOne({ username })
-      if (isUsernameExist) return next('username already exists')
+
+      const isAuthExist = await authCollection.findOne({ username })
+
+      if (isAuthExist)
+        return next('username already exists')
 
       const token = nanoid()
       const expiredAt = new Date()
 
-      const authDoc = {
+      await authCollection.insertOne({
         username,
         password: hashSync(password),
         createdAt: new Date(),
         tokens: [{ token, expiredAt }]
-      }
+      })
 
-      await authCollection.insertOne(authDoc)
-
-      const result = {
-        username,
-        token,
-      }
-
-      return res.json({ result })
+      return res.json({ username, token })
     })
 
-    .post('/login', async function (req, res, next) {
+    .post('/login', [
+        check('username').isString(),
+        check('password').isString(),
+      ], async function (req, res, next) {
       const { username, password } = req.body
 
-      const isUsernameExist = await authCollection.findOne({ username })
+      const isAuthExist = await authCollection.findOne({ username })
 
-      if (!isUsernameExist)
+      if (!isAuthExist)
         return next('username doesn\'t exist')
 
-      const _hash = _.get(isUsernameExist, 'password')
-
-      const isSamePassword = await bcrypt.compare(password, _hash)
+      const isSamePassword = await bcrypt.compare(password, isAuthExist.password)
 
       if (!isSamePassword)
         return next('wrong password')
 
-      const currentUser = _.omit(isUsernameExist, ['password', 'tokens'])
-
+      const { EXPIRED_IN_DAYS } = process.env
       const token = nanoid()
-      const expiredAt = moment(new Date()).add(process.env.EXPIRED_IN_DAYS || 15, 'd').startOf('day').toDate()
+      const expiredAt = moment(new Date()).add(parseInt(EXPIRED_IN_DAYS), 'd').startOf('day').toDate()
 
-      await authCollection.findOneAndUpdate({ _id: isUsernameExist._id }, {
+      await authCollection.findOneAndUpdate({ username }, {
         $push: { 'tokens': { token, expiredAt } }
       })
 
-      const result = {
-        username,
-        token,
-      }
-
-      return res.json({ result })
+      return res.json({ username, token })
     })
 
-    .post('/token', async function (req, res, next) {
+    .post('/token', [
+        check('token').isString()
+      ], async function (req, res, next) {
       const { token } = req.body
 
       const isTokenExist = await authCollection.findOne({ 'tokens.token': token })
@@ -95,37 +96,29 @@ module.exports = function ({ db, router }) {
         return next('token has expired')
       }
 
-      const result = {
-        username: isTokenExist.username,
-        token,
-      }
-
-      return res.json({ result })
+      return res.json({ username: isTokenExist.username, token })
     })
 
-    .post('/password', async function (req, res, next) {
-      const { password, newPassword } = req.body
+    .post('/password', [
+        check('username').isString(),
+        check('password').isString(),
+        check('newPassword').isString(),
+      ], async function (req, res, next) {
+      const { username, password, newPassword } = req.body
 
-      if (!this.currentUser)
-        return next('failed to change password')
+      const isAuthExist = await authCollection.findOne({ username })
 
-      const { _id } = this.currentUser
-
-      const isUserExist = await Users.findOne({ _id })
-
-      if (!isUserExist)
+      if (!isAuthExist)
         return next('username doesn\'t exist')
 
-      const _hash = _.get(isUserExist, 'services.hash')
-
-      const isSamePassword = await bcrypt.compare(password, _hash)
+      const isSamePassword = await bcrypt.compare(password, isAuthExist.password)
 
       if (!isSamePassword)
         return next('wrong password')
 
       const hash = hashSync(newPassword)
 
-      await Users.findOneAndUpdate({ _id: isUserExist._id }, {
+      await authCollection.findOneAndUpdate({ username }, {
         $set: {
           'password': hash,
           'tokens': [],
@@ -133,6 +126,24 @@ module.exports = function ({ db, router }) {
       })
 
       return res.sendStatus(200)
+    })
+
+    .post('/unregister', async function (req, res, next) {
+      const { _id, username } = req.body
+
+      const query = {}
+
+      if (_id) {
+        query._id = _id
+      }
+
+      if (username) {
+        query.username = username
+      }
+
+      await authCollection.removeOne(query)
+
+      res.sendStatus(200)
     })
 
 }
