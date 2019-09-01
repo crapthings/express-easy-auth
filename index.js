@@ -23,6 +23,10 @@ server.use(bodyParser.json())
 const registerServer = async function () {
   const { db, authCollection } = await registerDatabse({ MONGO_URL })
   server.use('/api', registerRoutes({ db, authCollection, router }))
+  server.use(function (err, req, res, next) {
+    if (!err) return next()
+    res.status(400).send(new Error(err))
+  })
   server.listen(PORT, function () {
     console.log(`Express-Easy-Auth is listening on port`, PORT)
   })

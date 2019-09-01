@@ -8,6 +8,8 @@ const REGISTER_URL = `${BASE_URL}/register`
 const LOGIN_URL = `${BASE_URL}/login`
 const TOKEN_LOGIN_URL = `${BASE_URL}/token`
 const CHANGE_PASSWORD_URL = `${BASE_URL}/password`
+const DISABLE_USER_URL = `${BASE_URL}/disable`
+const ENABLE_USER_URL = `${BASE_URL}/enable`
 
 describe('auth api', async function() {
 
@@ -51,6 +53,30 @@ describe('auth api', async function() {
   })
 
   it('Login user with new password', async function() {
+    const { data } = await axios.post(LOGIN_URL, { username, password: 'test' })
+    expect(data.username).to.be.a('string')
+    expect(data.token).to.be.a('string')
+  })
+
+  it('disable user', async function() {
+    const { data } = await axios.post(DISABLE_USER_URL, { username })
+    expect(data).to.equal('OK')
+  })
+
+  it('user can\'t login after disable', function(done) {
+    const resp = axios.post(LOGIN_URL, { username, password: 'test' })
+      .catch(err => {
+        expect(err.response.status).to.equal(400)
+        return done()
+      })
+  })
+
+  it('enable user', async function() {
+    const { data } = await axios.post(ENABLE_USER_URL, { username })
+    expect(data).to.equal('OK')
+  })
+
+  it('user can login after enable', async function() {
     const { data } = await axios.post(LOGIN_URL, { username, password: 'test' })
     expect(data.username).to.be.a('string')
     expect(data.token).to.be.a('string')

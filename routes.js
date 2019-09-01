@@ -37,6 +37,7 @@ module.exports = function ({ db, router }) {
       await authCollection.insertOne({
         username,
         password: hashSync(password),
+        isEnabled: true,
         createdAt: new Date(),
         tokens: [{ token, expiredAt }]
       })
@@ -54,6 +55,9 @@ module.exports = function ({ db, router }) {
 
       if (!isAuthExist)
         return next('username doesn\'t exist')
+
+      if (!isAuthExist.isEnabled)
+        return next('user is disabled')
 
       const isSamePassword = await bcrypt.compare(password, isAuthExist.password)
 
@@ -143,6 +147,22 @@ module.exports = function ({ db, router }) {
 
       await authCollection.removeOne(query)
 
+      res.sendStatus(200)
+    })
+
+    .post('/disable', [
+        check('username').isString(),
+      ],async function (req, res, next) {
+      const { username } = req.body
+      await authCollection.updateOne({ username }, { $set: { isEnabled: false } })
+      res.sendStatus(200)
+    })
+
+    .post('/enable', [
+        check('username').isString(),
+      ],async function (req, res, next) {
+      const { username } = req.body
+      await authCollection.updateOne({ username }, { $set: { isEnabled: true } })
       res.sendStatus(200)
     })
 
