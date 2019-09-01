@@ -2,9 +2,6 @@
   "name": "@crapthings/express-easy-auth",
   "version": "0.0.1",
   "main": "index.js",
-  "scripts": {
-    "test": "node index.js && mocha"
-  },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.19.0",
